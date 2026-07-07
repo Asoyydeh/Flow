@@ -1,4 +1,4 @@
-# 🗺️ Flowmap & Spesifikasi Database: Sistem Manajemen Dokumen Proyek
+# 🗺️ Flowmap & Spesifikasi Database: Sistem ERP Dokumen Proyek
 
 Dokumen ini mendefinisikan alur kerja kolaborasi proyek, struktur folder penyimpanan file pengguna yang terisolasi, rancangan skema database relasional menggunakan Prisma ORM dan SQL PostgreSQL, serta spesifikasi detail untuk mengimpor data dari file Excel (Penawaran, BOQ, dan RFQ).
 
