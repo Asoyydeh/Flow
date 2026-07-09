@@ -1,4 +1,4 @@
-# 🗺️ Flowmap & Spesifikasi Database: Sistem ERP Dokumen Proyek
+# 🗺️ Flowmap & Spesifikasi Database: Sistem Manajemen Dokumen Proyek
 
 Dokumen ini mendefinisikan alur kerja kolaborasi proyek, struktur folder penyimpanan file pengguna yang terisolasi, rancangan skema database relasional menggunakan Prisma ORM dan SQL PostgreSQL, serta spesifikasi detail untuk mengimpor data dari file Excel (Penawaran, BOQ, dan RFQ).
 
@@ -21,26 +21,26 @@ flowchart TD
     classDef folder fill:#ffe0b2,stroke:#f57c00,stroke-width:2px,color:#e65100;
 
     %% Roles
-    ENG[1. Engineering <br> Creator/Editor]:::roleEng
-    PR_ADM[4. Proyek Admin <br> Viewer/Downloader]:::roleProy
-    PROC[5. Procurement <br> Editor BOQ & Upload PO]:::roleProc
-    FIN[6. Finance <br> Verifier & Release PO]:::roleFin
-    ADM_MON[7. Admin Monitoring <br> Read-Only Monitor]:::roleAdmin
-    S_ADM[8. Superadmin <br> Full CRUD & Users]:::roleAdmin
+    ENG[1. Engineering <br> Upload/Edit: Drawing, RAB, Penawaran Draft, BOQ, Forecast Cost, Drawing As-Built, RFQ Scan/Kosong]:::roleEng
+    PR_ADM[2. Proyek Admin <br> Upload/Edit: SPK, Penawaran Final, Invoice, Subkon Docs, Foto]:::roleProy
+    PROC[3. Procurement <br> Edit Rate BOQ]:::roleProc
+    FIN[4. Finance <br> View & Release PO]:::roleFin
+    ADM_MON[5. Admin Monitoring <br> Read-Only Monitor]:::roleAdmin
+    S_ADM[6. Superadmin <br> Full CRUD & Users]:::roleAdmin
 
     %% Core Data Flow
-    ENG -->|Upload Berkas| MULTER[2. Upload Middleware & Controller]:::process
-    PROC -->|Upload PO Baru| MULTER
+    ENG -->|Upload Berkas| MULTER[Upload Middleware & Controller]:::process
+    PR_ADM -->|Upload Berkas| MULTER
     
     MULTER -->|Simpan File Fisik| STORE[(Storage Terisolasi <br> /uploads/users/userId/)]:::folder
     MULTER -->|Tulis Metadata Berkas| DB_DOCS[(Tabel: documents)]:::db
 
-    DB_DOCS -->|Otomatis Penguraian Excel| PARSER[3. ExcelParserService]:::process
+    DB_DOCS -->|Otomatis Penguraian Excel| PARSER[ExcelParserService]:::process
     STORE -.->|Baca Berkas Excel| PARSER
     PARSER -->|Tulis Data Detail| DB_DETAILS[(Tabel Detail: BOQ, Penawaran, RFQ)]:::db
 
     %% Roles Actions
-    PR_ADM -->|Unduh Semua Berkas ZIP| STORE
+    PR_ADM -->|Unduh Berkas ZIP| STORE
     
     PROC -->|Update Harga Satuan BOQ| DB_DETAILS
     
@@ -56,12 +56,12 @@ flowchart TD
 
 | Pengguna / Peran (Role) | Hak Akses (Access Control) | Fungsi & Tanggung Jawab Utama |
 | :--- | :--- | :--- |
-| **Engineering** | CRUD milik sendiri | - Mengunggah berkas Gambar Teknis.<br>- Mengunggah Penawaran Vendor (Excel + PDF) melalui Form Modal.<br>- Mengunggah berkas BOQ & RFQ (Excel).<br>- Hanya dapat memanipulasi berkas di folder terisolasi miliknya sendiri. |
-| **Proyek Admin** | Read-Only | - Melihat daftar seluruh berkas proyek aktif.<br>- Mengunduh seluruh berkas proyek lapangan (bisa sekaligus dalam format ZIP).<br>- **Tidak memiliki hak akses** untuk mengubah data, menambah proyek, atau menghapus berkas. |
-| **Procurement** | Read + Edit BOQ & PO | - Melihat daftar berkas proyek.<br>- Membuka tab evaluasi dan mengubah kolom harga satuan aktual (`rateProcurement`) di berkas BOQ.<br>- Memberikan catatan detail (*notes*) negosiasi item pekerjaan.<br>- Mengunggah berkas Purchase Order (PO) baru yang otomatis berstatus `PO_PENDING`. |
-| **Finance** | Read-Only + Release PO | - Memverifikasi nilai penawaran vendor melalui pop-up modal detail hasil pembacaan Excel.<br>- Memantau total nilai akhir anggaran BOQ yang telah disesuaikan oleh Procurement.<br>- Melakukan verifikasi dan rilis berkas Purchase Order (PO), mengubah statusnya dari `PO_PENDING` menjadi `PO_RELEASED`. |
-| **Admin (Monitoring)** | Read-Only Global | - Memantau seluruh direktori penyimpanan fisik pengguna.<br>- Memantau seluruh isi tabel transaksi database.<br>- Memantau kronologi log audit sistem global.<br>- **Tidak memiliki tombol/fitur** untuk mengubah, menambah, atau menghapus data (Sistem Terkunci). |
-| **Superadmin** | Full CRUD | - Manajemen akun staf (mendaftarkan user baru & mengatur role).<br>- Akses penuh CRUD (Create, Read, Update, Delete) pada seluruh data proyek dan file fisik.<br>- Memantau riwayat log audit aktivitas.<br>- Melakukan override/koreksi data jika terjadi kesalahan operasional staf. |
+| **Engineering** | CRUD milik sendiri (untuk jenis dokumen tertentu) | - Mengunggah & mengedit berkas Drawing, RAB, Penawaran Draft (Excel), BOQ (Excel), Forecast Cost (Excel), Drawing As-Built, dan RFQ Scan / Kosong.<br>- Melihat berkas SPK, Penawaran Final, Subkon Docs, dan Foto. |
+| **Proyek Admin** | CRUD milik sendiri (untuk jenis dokumen tertentu) | - Mengunggah & mengedit berkas SPK, Penawaran Final, Invoice, Subkon Docs, dan Foto.<br>- Melihat & mengunduh berkas Drawing As-Built, RFQ Scan / Kosong, Drawing, dan RAB. |
+| **Procurement** | Read + Edit BOQ | - Melihat berkas Penawaran Final, Drawing As-Built, RFQ Scan / Kosong, dan BOQ.<br>- Membuka tab evaluasi dan mengubah kolom harga satuan aktual (`rateProcurement`) di berkas BOQ. |
+| **Finance** | Read-Only | - Melihat berkas Penawaran Final, Invoice, Subkon Docs, RFQ Scan / Kosong, RAB, Penawaran Draft, BOQ, dan Forecast Cost.<br>- Melakukan verifikasi dan rilis berkas Purchase Order (PO) / Subkon Docs dari status `PO_PENDING` menjadi `PO_RELEASED`. |
+| **Admin (Monitoring)** | Read-Only Global | - Memantau seluruh direktori penyimpanan fisik pengguna.<br>- Memantau seluruh isi tabel transaksi database.<br>- Memantau kronologi log audit sistem global. |
+| **Superadmin** | Full CRUD | - Manajemen akun staf (mendaftarkan user baru & mengatur role).<br>- Akses penuh CRUD (Create, Read, Update, Delete) pada seluruh data proyek dan file fisik. |
 
 
 ### Penjelasan Detil Alur Kerja Proyek (Step-by-Step):
@@ -138,7 +138,406 @@ storage/
 
 ---
 
-## 3. Pemetaan Struktur Data File Excel
+## 3. Skema Database (Database Schema)
+
+Berikut rancangan skema database relasional yang mendukung multi-role (termasuk Admin Monitoring & Superadmin), pencatatan file, isolasi folder, serta penyimpanan detail data Excel.
+
+### A. Kode Skema Prisma ORM (`schema.prisma`)
+
+```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Definisikan Role User sesuai kebutuhan sistem
+enum Role {
+  ENGINEERING
+  PROYEK_ADMIN
+  PROCUREMENT
+  FINANCE
+  ADMIN_MONITORING   // Hanya bisa monitoring (Read-Only)
+  SUPERADMIN         // Bisa monitoring + CRUD
+}
+
+// Jenis dokumen yang diupload
+enum DocType {
+  SPK
+  PENAWARAN_FINAL
+  DRAWING_AS_BUILT
+  INVOICE
+  SUBKON_DOCS
+  RFQ_SCAN_KOSONG
+  DRAWING
+  FOTO
+  RAB
+  PENAWARAN_DRAFT
+  BOQ
+  FORECAST_COST
+}
+
+// Status persetujuan/proses dokumen
+enum DocStatus {
+  DRAFT
+  PENDING
+  REVISED_BY_PROCUREMENT
+  APPROVED
+  REJECTED
+}
+
+// 1. Model Pengguna (User)
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  passwordHash String        @map("password_hash")
+  role         Role          @default(ENGINEERING)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  
+  // Relasi
+  folders      UserFolder[]  // Manajemen folder fisik user
+  documents    Document[]    // Dokumen yang diupload oleh user ini
+  auditLogs    AuditLog[]    // Jejak audit aktivitas user
+
+  @@map("users")
+}
+
+// 2. Model Folder Pengguna (User Folder Path Mapping)
+model UserFolder {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folderPath String   @unique @map("folder_path") // Path fisik e.g., "storage/uploads/users/usr-uuid"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("user_folders")
+}
+
+// 3. Model Proyek (Project Container)
+model Project {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+  documents   Document[]
+
+  @@map("projects")
+}
+
+// 4. Model Metadata File (Document)
+model Document {
+  id           String      @id @default(uuid())
+  projectId    String      @map("project_id")
+  project      Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fileName     String      @map("file_name")
+  fileType     DocType     @map("file_type")
+  filePath     String      @map("file_path")      // Lokasi file fisik di folder user
+  fileSize     Int         @map("file_size")      // Ukuran file dalam bytes
+  uploadedById String      @map("uploaded_by_id")
+  uploadedBy   User        @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  status       DocStatus   @default(DRAFT)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  // Relasi ke Data hasil parsing Excel
+  boqHeaders       BoqHeader[]
+  penawaranHeaders PenawaranHeader[]
+  rfqHeaders       RfqHeader[]
+
+  @@map("documents")
+}
+
+// ==========================================
+// DATA DARI EXCEL (PARSED SHEET DATA MODELS)
+// ==========================================
+
+// 5. BOQ (Bill of Quantity) - Header
+model BoqHeader {
+  id          String      @id @default(uuid())
+  documentId  String      @map("document_id")
+  document    Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  totalAmount Float       @default(0) @map("total_amount") // Total Kalkulasi Akhir
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  items       BoqItem[]
+
+  @@map("boq_headers")
+}
+
+// 6. BOQ (Bill of Quantity) - Detail/Item
+model BoqItem {
+  id                 String    @id @default(uuid())
+  boqHeaderId        String    @map("boq_header_id")
+  boqHeader          BoqHeader @relation(fields: [boqHeaderId], references: [id], onDelete: Cascade)
+  wbsCode            String?   @map("wbs_code") // Code struktur pekerjaan
+  description        String
+  quantity           Float
+  unit               String    // e.g., "m3", "kg", "pcs"
+  rateEngineering    Float     @map("rate_engineering") // Harga estimasi awal dari Engineering
+  rateProcurement    Float     @map("rate_procurement") // Harga revisi dari Procurement
+  totalPrice         Float     @map("total_price")      // qty * rateProcurement (atau rateEng jika kosong)
+  notes              String?
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@map("boq_items")
+}
+
+// 7. Penawaran (Quotation Vendor) - Header
+model PenawaranHeader {
+  id          String          @id @default(uuid())
+  documentId  String          @map("document_id")
+  document    Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  vendorName  String          @map("vendor_name")
+  quoteNumber String?         @map("quote_number")
+  totalOffer  Float           @map("total_offer")
+  validityDate DateTime?      @map("validity_date")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  items       PenawaranItem[]
+
+  @@map("penawaran_headers")
+}
+
+// 8. Penawaran (Quotation Vendor) - Detail/Item
+model PenawaranItem {
+  id                String          @id @default(uuid())
+  penawaranHeaderId String          @map("penawaran_header_id")
+  penawaranHeader   PenawaranHeader @relation(fields: [penawaranHeaderId], references: [id], onDelete: Cascade)
+  itemNo            Int             @map("item_no")
+  description       String
+  quantity          Float
+  unit              String
+  unitPrice         Float           @map("unit_price")
+  totalPrice        Float           @map("total_price") // qty * unitPrice
+  notes             String?
+
+  @@map("penawaran_items")
+}
+
+// 9. RFQ (Request for Quotation) - Header
+model RfqHeader {
+  id          String    @id @default(uuid())
+  documentId  String    @map("document_id")
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  rfqNumber   String    @unique @map("rfq_number")
+  targetDate  DateTime? @map("target_date")
+  terms       String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  items       RfqItem[]
+
+  @@map("rfq_headers")
+}
+
+// 10. RFQ (Request for Quotation) - Detail/Item
+model RfqItem {
+  id             String    @id @default(uuid())
+  rfqHeaderId    String    @map("rfq_header_id")
+  rfqHeader      RfqHeader @relation(fields: [rfqHeaderId], references: [id], onDelete: Cascade)
+  itemNo         Int       @map("item_no")
+  description    String
+  quantity       Float
+  unit           String
+  specifications String?
+  notes          String?
+
+  @@map("rfq_items")
+}
+
+// 11. Audit Log (Untuk Monitoring Kerja User oleh Admin & Superadmin)
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?  @map("user_id")
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  actionType  String   @map("action_type") // e.g., "UPLOAD_FILE", "EDIT_BOQ", "DOWNLOAD_FILE", "DELETE_USER"
+  tableName   String   @map("table_name")  // e.g., "documents", "boq_items"
+  recordId    String   @map("record_id")
+  description String
+  oldValues   String?  @map("old_values")  // JSON String sebelum diubah (untuk tracking edit Superadmin)
+  newValues   String?  @map("new_values")  // JSON String sesudah diubah
+  ipAddress   String?  @map("ip_address")
+  timestamp   DateTime @default(now())
+
+  @@map("audit_logs")
+}
+```
+
+---
+
+### B. Kode DDL SQL (PostgreSQL Native Script)
+
+Jika ingin melakukan inisialisasi skema database secara langsung menggunakan SQL:
+
+```sql
+-- DDL Script PostgreSQL
+
+-- 1. Create Enums
+CREATE TYPE "Role" AS ENUM (
+  'ENGINEERING', 
+  'PROYEK_ADMIN', 
+  'PROCUREMENT', 
+  'FINANCE', 
+  'ADMIN_MONITORING', 
+  'SUPERADMIN'
+);
+
+CREATE TYPE "DocType" AS ENUM (
+  'SPK', 
+  'PENAWARAN_FINAL', 
+  'DRAWING_AS_BUILT', 
+  'INVOICE',
+  'SUBKON_DOCS',
+  'RFQ_SCAN_KOSONG',
+  'DRAWING',
+  'FOTO',
+  'RAB',
+  'PENAWARAN_DRAFT',
+  'BOQ',
+  'FORECAST_COST'
+);
+
+CREATE TYPE "DocStatus" AS ENUM (
+  'DRAFT', 
+  'PENDING', 
+  'REVISED_BY_PROCUREMENT', 
+  'APPROVED', 
+  'REJECTED'
+);
+
+-- 2. Create Users Table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role "Role" DEFAULT 'ENGINEERING' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Create User Folders Table
+CREATE TABLE user_folders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    folder_path VARCHAR(512) UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. Create Projects Table
+CREATE TABLE projects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. Create Documents Table
+CREATE TABLE documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    file_type "DocType" NOT NULL,
+    file_path VARCHAR(512) NOT NULL,
+    file_size INT NOT NULL,
+    uploaded_by_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    status "DocStatus" DEFAULT 'DRAFT' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. Create BOQ Headers Table
+CREATE TABLE boq_headers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    total_amount DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. Create BOQ Items Table
+CREATE TABLE boq_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    boq_header_id UUID NOT NULL REFERENCES boq_headers(id) ON DELETE CASCADE,
+    wbs_code VARCHAR(100),
+    description TEXT NOT NULL,
+    quantity DOUBLE PRECISION NOT NULL,
+    unit VARCHAR(50) NOT NULL,
+    rate_engineering DOUBLE PRECISION NOT NULL,
+    rate_procurement DOUBLE PRECISION NOT NULL,
+    total_price DOUBLE PRECISION NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 8. Create Penawaran Headers Table
+CREATE TABLE penawaran_headers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    vendor_name VARCHAR(255) NOT NULL,
+    quote_number VARCHAR(100),
+    total_offer DOUBLE PRECISION NOT NULL,
+    validity_date DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9. Create Penawaran Items Table
+CREATE TABLE penawaran_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    penawaran_header_id UUID NOT NULL REFERENCES penawaran_headers(id) ON DELETE CASCADE,
+    item_no INT NOT NULL,
+    description TEXT NOT NULL,
+    quantity DOUBLE PRECISION NOT NULL,
+    unit VARCHAR(50) NOT NULL,
+    unit_price DOUBLE PRECISION NOT NULL,
+    total_price DOUBLE PRECISION NOT NULL,
+    notes TEXT
+);
+
+-- 10. Create RFQ Headers Table
+CREATE TABLE rfq_headers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    rfq_number VARCHAR(100) UNIQUE NOT NULL,
+    target_date DATE,
+    terms TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 11. Create RFQ Items Table
+CREATE TABLE rfq_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rfq_header_id UUID NOT NULL REFERENCES rfq_headers(id) ON DELETE CASCADE,
+    item_no INT NOT NULL,
+    description TEXT NOT NULL,
+    quantity DOUBLE PRECISION NOT NULL,
+    unit VARCHAR(50) NOT NULL,
+    specifications TEXT,
+    notes TEXT
+);
+
+-- 12. Create Audit Logs Table
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    action_type VARCHAR(100) NOT NULL,
+    table_name VARCHAR(100) NOT NULL,
+    record_id VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    old_values TEXT, -- Data JSON sebelum diubah
+    new_values TEXT, -- Data JSON setelah diubah
+    ip_address VARCHAR(45),
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+## 4. Pemetaan Struktur Data File Excel
 
 Ketika file Excel diupload oleh Engineering, sistem backend akan mem-parsing lembar kerja Excel dan memetakannya ke kolom database sebagai berikut:
 
@@ -193,7 +592,7 @@ Ketika file Excel diupload oleh Engineering, sistem backend akan mem-parsing lem
 
 ---
 
-## 4. Matriks Hak Akses Pengguna (Role-Based Access Control)
+## 5. Matriks Hak Akses Pengguna (Role-Based Access Control)
 
 Sistem membedakan izin akses berdasarkan peran masing-masing demi menjaga integritas data keuangan dan dokumen.
 
@@ -202,11 +601,18 @@ Sistem membedakan izin akses berdasarkan peran masing-masing demi menjaga integr
 | **Folder User Sendiri** | CRUD | R | R | R | R | CRUD |
 | **Folder User Lain** | - | R (Download) | R (Download) | R (Download) | R | CRUD |
 | **Unduh Semua Berkas (ZIP)** | - | R (Download ZIP) | - | - | - | R (Download ZIP) |
-| **Gambar Proyek** | CRUD | R (Download) | - | - | R | CRUD |
-| **Penawaran (Excel + PDF)** | CRUD | R (Download) | R | R (Modal View) | R | CRUD |
-| **BOQ - Rate Engineering** | CRUD | R | R | R | R | CRUD |
-| **BOQ - Rate Procurement**| - | R | RU (Edit Rate) | R (Total Only) | R | CRUD |
-| **RFQ (Request for Quotation)**| CRUD | R (Download) | R | - | R | CRUD |
+| **SPK (Klien)** | R | CRUD | - | - | R | CRUD |
+| **Penawaran Final (Klien)** | R | CRUD | R | R | R | CRUD |
+| **Drawing As-Built (Klien)** | CRUD | R | R | - | R | CRUD |
+| **Invoice (Klien)** | - | CRUD | - | R | R | CRUD |
+| **Subkon Docs** | R | CRUD | - | R | R | CRUD |
+| **RFQ Scan / Kosong** | CRUD | R | R | R | R | CRUD |
+| **Drawing (Internal)** | CRUD | R | - | - | R | CRUD |
+| **Foto (Internal)** | R | CRUD | - | - | R | CRUD |
+| **RAB (Internal)** | CRUD | R | - | R | R | CRUD |
+| **Penawaran Draft** | CRUD | - | - | R | R | CRUD |
+| **BOQ** | CRUD | - | RU (Edit Rate) | R | R | CRUD |
+| **Forecast Cost** | CRUD | - | - | R | R | CRUD |
 | **Manajemen Akun User** | - | - | - | - | - | CRUD |
 | **Melihat Log Aktivitas** | - | - | - | - | R (Semua Log) | CRUD |
 
